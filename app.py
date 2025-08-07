@@ -21,7 +21,6 @@ def load_model():
 
 llm = load_model()
 
-
 uploaded_file = st.file_uploader("Upload a PDF", type="pdf")
 if uploaded_file:
     with st.spinner("Processing PDF..."):
@@ -41,10 +40,7 @@ if uploaded_file:
 user_input = st.text_input("Ask a question:")
 
 if user_input and st.session_state.chunks:
-    for msg in st.session_state.messages:
-        st.chat_message(msg["role"]).markdown(msg["content"])
-
-    st.chat_message("user").markdown(user_input)
+    # Add the new user message to the session state
     st.session_state.messages.append({"role": "user", "content": user_input})
 
     with st.spinner("Thinking..."):
@@ -72,10 +68,18 @@ if user_input and st.session_state.chunks:
         
         # Update placeholder with final response
         response_placeholder.empty()
-
-    st.chat_message("assistant").markdown(response)
+    
+    # Add the assistant response to the session state
     st.session_state.messages.append({"role": "assistant", "content": response})
+    
+    # Clear all previous message displays
+    st.empty()
+    
+    # Display messages in reverse order (newest first)
+    for msg in reversed(st.session_state.messages):
+        st.chat_message(msg["role"]).markdown(msg["content"])
 
-    # Add at the end of your file
+
+# Add at the end of your file
 st.markdown("---")
 st.markdown("### PDF RAG Chatbot | Created by [Ivan Novakovic](https://github.com/Ivanhoeee/pdf-rag-chatbot)")
