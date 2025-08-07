@@ -5,6 +5,15 @@ from rag_utils import extract_text_from_pdf, chunk_text, embed_chunks, create_fa
 st.set_page_config(page_title="📚 Chat with PDF", layout="wide")
 st.title("📚 Free RAG Chatbot with Memory")
 
+
+# Add disclaimer/information message
+st.info("""
+**⚠️ Educational Tool Notice:**  
+This app uses a small, free language model (flan-t5-small) to demonstrate RAG concepts. 
+Performance will be noticeably slower and less sophisticated than commercial services like ChatGPT or Claude.
+The focus here is on learning about RAG architecture and seeing how document retrieval works with simple LLMs.
+""")
+
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "chunks" not in st.session_state:
