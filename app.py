@@ -53,14 +53,29 @@ if user_input and st.session_state.chunks:
     st.session_state.messages.append({"role": "user", "content": user_input})
 
     with st.spinner("Thinking..."):
-        retrieved = retrieve_similar_chunks(user_input, st.session_state.chunks, st.session_state.index)
-        context = "\n\n".join(retrieved)
-        prompt = f"""Based on the following information, please answer the question.
-        Information:
-        {context}
+        # Create an expandable section to show the RAG process
+        with st.expander("🔍 Click here for RAG Process Details", expanded=False):
+            st.write("**Step 1: Converting question to embedding vector**")
+            st.write("Your question is transformed into a numerical vector using the sentence transformer model.")
+            
+            st.write("**Step 2: Semantic search in document chunks**")
+            retrieved = retrieve_similar_chunks(user_input, st.session_state.chunks, st.session_state.index)
+            st.write(f"Found {len(retrieved)} relevant passages in the document.")
+            
+            st.write("**Step 3: Building context from retrieved chunks**")
+            context = "\n\n".join(retrieved)
+            st.write(f"Combined context length: {len(context)} characters")
+            
+            
+            prompt = f"""Based on the following information, please answer the question.
+            Information:
+            {context}
 
-        Question: {user_input}"""
+            Question: {user_input}"""
 
+            st.write("**Step 4: Creating prompt for the language model**")
+            st.write(f"Prompt: `{prompt}`")
+        
         # Add a placeholder for streaming response
         response_placeholder = st.empty()
         
