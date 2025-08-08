@@ -1,109 +1,93 @@
 import streamlit as st
-from transformers import pipeline
 from rag_utils import extract_text_from_pdf, chunk_text, embed_chunks, create_faiss_index, retrieve_similar_chunks
+from model_utils import generate_response
+from ui_components import display_header, display_chat_messages, display_rag_process, display_footer, display_embedding_visualization, display_embedding_visualization_with_question
 
-st.set_page_config(page_title="📚 Chat with PDF", layout="wide")
-st.title("📚 Free RAG Chatbot with Memory")
+# Setup UI
+display_header()
 
-
-# Add disclaimer/information message
-st.info("""
-**⚠️ Educational Tool Notice:**  
-This app uses a small, free language model (flan-t5-small) to demonstrate RAG concepts. 
-Performance will be noticeably slower and less sophisticated than commercial services like ChatGPT or Claude.
-The focus here is on learning about RAG architecture and seeing how document retrieval works with simple LLMs.
-""")
-
+# Initialize session state
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "chunks" not in st.session_state:
     st.session_state.chunks = None
     st.session_state.index = None
+if "embeddings" not in st.session_state:
+    st.session_state.embeddings = None
+if "refresh_viz" not in st.session_state:
+    st.session_state.refresh_viz = False
+if "last_question" not in st.session_state:
+    st.session_state.last_question = None
 
-@st.cache_resource
-def load_model():
-    return pipeline(
-        "text2text-generation",  # This is the correct task for T5 models
-        model="google/flan-t5-small",
-        tokenizer="google/flan-t5-small",
-    )
+# Create tabs for different app functions
+tab1, tab2 = st.tabs(["Chat with PDF", "Visualize Embeddings"])
 
-llm = load_model()
+with tab1:
+    # File upload and processing
+    uploaded_file = st.file_uploader("Upload a PDF", type="pdf")
+    if uploaded_file:
+        with st.spinner("Processing PDF..."):
+            st.text("Extracting text...")
+            text = extract_text_from_pdf(uploaded_file)
+            st.text("Chunking text...")
+            chunks = chunk_text(text)
+            st.text(f"Created {len(chunks)} chunks")
+            st.text(f"Generating embeddings...")
+            embeddings = embed_chunks(chunks)
+            st.text("Building search index...")
+            index = create_faiss_index(embeddings)
+            st.session_state.chunks = chunks
+            st.session_state.embeddings = embeddings
+            st.session_state.index = index
+        st.success("PDF processed and indexed!")
 
-uploaded_file = st.file_uploader("Upload a PDF", type="pdf")
-if uploaded_file:
-    with st.spinner("Processing PDF..."):
-        st.text("Extracting text...")
-        text = extract_text_from_pdf(uploaded_file)
-        st.text("Chunking text...")
-        chunks = chunk_text(text)
-        st.text(f"Created {len(chunks)} chunks")
-        st.text(f"Generating embeddings...")
-        embeddings = embed_chunks(chunks)
-        st.text("Building search index...")
-        index = create_faiss_index(embeddings)
-        st.session_state.chunks = chunks
-        st.session_state.index = index
-    st.success("PDF processed and indexed!")
+    # Chat interface
+    user_input = st.text_input("Ask a question:")
 
-user_input = st.text_input("Ask a question:")
-
-if user_input and st.session_state.chunks:
-    # Add the new user message to the session state
-    st.session_state.messages.append({"role": "user", "content": user_input})
-
-    with st.spinner("Thinking..."):
-        # Create an expandable section to show the RAG process
-        with st.expander("🔍 Click here for RAG Process Details", expanded=False):
-            st.write("**Step 1: Converting question to embedding vector**")
-            st.write("Your question is transformed into a numerical vector using the sentence transformer model.")
-            
-            st.write("**Step 2: Semantic search in document chunks**")
+    if user_input and st.session_state.chunks:
+        # Save the question for visualization
+        st.session_state.last_question = user_input
+        
+        # Add user message
+        st.session_state.messages.append({"role": "user", "content": user_input})
+        
+        with st.spinner("Thinking..."):
+            # Retrieve relevant chunks
             retrieved = retrieve_similar_chunks(user_input, st.session_state.chunks, st.session_state.index)
-            st.write(f"Found {len(retrieved)} relevant passages in the document.")
-            
-            st.write("**Step 3: Building context from retrieved chunks**")
             context = "\n\n".join(retrieved)
-            st.write(f"Combined context length: {len(context)} characters")
             
-            
+            # Create prompt
             prompt = f"""Based on the following information, please answer the question.
             Information:
             {context}
 
             Question: {user_input}"""
+            
+            # Show RAG process
+            display_rag_process(user_input, st.session_state.chunks, st.session_state.index, retrieved, context, prompt)
+            
+            # Generate response
+            response_placeholder = st.empty()
+            response_placeholder.markdown("Generating response...")
+            response = generate_response(prompt)
+            response_placeholder.empty()
+        
+        # Add assistant message
+        st.session_state.messages.append({"role": "assistant", "content": response})
+        
+        # Display messages
+        display_chat_messages(st.session_state.messages)
 
-            st.write("**Step 4: Creating prompt for the language model**")
-            st.write(f"Prompt: `{prompt}`")
-        
-        # Add a placeholder for streaming response
-        response_placeholder = st.empty()
-        
-        # Show that something is happening
-        response_placeholder.markdown("Generating response...")
-        
-        # Generate response - T5 models use max_length instead of max_new_tokens
-        # and they directly output the answer, not including the prompt
-        response = llm(prompt, max_length=100)[0]["generated_text"].strip()
-        
-        # If empty response, provide a fallback
-        if not response:
-            response = "I couldn't generate a response based on the provided information."
-        
-        # Update placeholder with final response
-        response_placeholder.empty()
-    
-    # Add the assistant response to the session state
-    st.session_state.messages.append({"role": "assistant", "content": response})
-    
-    # Clear all previous message displays
-    st.empty()
-    
-    # Display messages in reverse order (newest first)
-    for msg in reversed(st.session_state.messages):
-        st.chat_message(msg["role"]).markdown(msg["content"])
+with tab2:
+    if st.session_state.chunks is None or st.session_state.embeddings is None:
+        st.info("Please upload and process a PDF first to visualize its embeddings.")
+    else:
+        # Display the embedding visualization with the last question
+        display_embedding_visualization_with_question(
+            st.session_state.chunks, 
+            st.session_state.embeddings,
+            st.session_state.last_question
+        )
 
-
-# Add at the end of your file
-st.markdown("---")
-st.markdown("### PDF RAG Chatbot | Created by [Ivan Novakovic](https://github.com/Ivanhoeee/pdf-rag-chatbot)")
+# Display footer
+display_footer()

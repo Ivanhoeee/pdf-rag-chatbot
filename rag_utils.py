@@ -4,6 +4,8 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 import os
 import re
+import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
 
 embedder = SentenceTransformer("all-MiniLM-L6-v2")
 
@@ -160,7 +162,31 @@ def _chunk_by_words(text, chunk_size, overlap):
     return chunks
 
 
-def retrieve_similar_chunks(query, chunks, index, k=3):  # Reduced from 4 to 3
+def retrieve_similar_chunks(query, chunks, index, k=3):
+    """
+    Find the most semantically similar chunks to a query.
+    
+    This function converts the user's query to an embedding vector and uses
+    the FAISS index to find the k most similar chunks based on vector similarity.
+    Duplicate chunks are filtered out to ensure result diversity.
+    
+    Parameters:
+    -----------
+    query : str
+        The user's question or search query
+    chunks : list of str
+        All available text chunks from the document
+    index : faiss.IndexFlatL2
+        The FAISS index built from the chunk embeddings
+    k : int, default=3
+        Number of similar chunks to retrieve
+        
+    Returns:
+    --------
+    list of str
+        The most relevant text chunks for answering the query,
+        with duplicates removed
+    """
     query_embedding = embedder.encode([query])
     distances, indices = index.search(np.array(query_embedding), k)
     
@@ -174,16 +200,92 @@ def retrieve_similar_chunks(query, chunks, index, k=3):  # Reduced from 4 to 3
     return results
 
 def embed_chunks(chunks):
+    """
+    Convert text chunks to numerical vector embeddings.
+    
+    This function transforms each text chunk into a dense vector representation
+    using a pre-trained Sentence Transformer model (all-MiniLM-L6-v2).
+    These embeddings capture the semantic meaning of each chunk in a
+    high-dimensional space.
+    
+    Parameters:
+    -----------
+    chunks : list of str
+        The text chunks to be converted into embeddings
+        
+    Returns:
+    --------
+    numpy.ndarray
+        An array of embeddings, where each embedding is a dense vector
+    """
     return embedder.encode(chunks, show_progress_bar=False)
 
+
 def create_faiss_index(embeddings):
+    """
+    Create a FAISS vector index for fast similarity search.
+    
+    This function builds a FAISS index using the L2 (Euclidean) distance metric
+    for efficient nearest-neighbor search among the document chunk embeddings.
+    The index enables quick retrieval of similar chunks based on vector similarity.
+    
+    Parameters:
+    -----------
+    embeddings : numpy.ndarray
+        The embeddings to add to the index
+        
+    Returns:
+    --------
+    faiss.IndexFlatL2
+        A FAISS index containing the embeddings, ready for similarity search
+    """
     dimension = len(embeddings[0])
     index = faiss.IndexFlatL2(dimension)
     index.add(np.array(embeddings))
     return index
 
-# def retrieve_similar_chunks(query, chunks, index, k=4):
-# NOTE: old code
-#     query_embedding = embedder.encode([query])
-#     distances, indices = index.search(np.array(query_embedding), k)
-#     return [chunks[i] for i in indices[0]]
+
+def visualize_embeddings(chunks, embeddings):
+    """
+    Visualize text chunk embeddings in a reduced 2D space using PCA.
+    
+    This function takes high-dimensional text embeddings and projects them onto
+    a 2D plane for visualization purposes. It helps to understand the relative
+    semantic relationships between different text chunks by observing their
+    proximity in the embedding space.
+    
+    Parameters:
+    -----------
+    chunks : list of str
+        The original text chunks corresponding to the embeddings
+    embeddings : numpy.ndarray
+        The high-dimensional embeddings to visualize, typically output from 
+        the embed_chunks function
+        
+    Returns:
+    --------
+    matplotlib.figure.Figure
+        A matplotlib figure showing the 2D projection of embeddings with
+        the first few chunks labeled
+        
+    Notes:
+    ------
+    This visualization uses PCA (Principal Component Analysis) for dimensionality 
+    reduction and may not perfectly preserve all semantic relationships from the 
+    original high-dimensional space.
+    """
+    # Reduce dimensions for visualization
+    pca = PCA(n_components=2)
+    reduced_embeddings = pca.fit_transform(embeddings)
+    
+    # Plot in 2D
+    plt.figure(figsize=(10, 8))
+    plt.scatter(reduced_embeddings[:, 0], reduced_embeddings[:, 1])
+    
+    # Add labels for some points
+    for i, chunk in enumerate(chunks[:5]):  # Label first 5 chunks
+        plt.annotate(chunk[:50] + "...", 
+                    (reduced_embeddings[i, 0], reduced_embeddings[i, 1]))
+    
+    plt.title("Embedding Space Visualization")
+    return plt
