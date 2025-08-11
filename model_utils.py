@@ -156,7 +156,7 @@ def generate_response(prompt, model_name="flan-t5-small", max_length=256):
             )
             
             # Generate response
-            inputs = tokenizer(formatted_prompt, return_tensors="pt").to(model.device)
+            inputs = tokenizer(formatted_prompt, return_tensors="pt")
             outputs = model.generate(
                 inputs.input_ids,
                 max_new_tokens=max_length,
