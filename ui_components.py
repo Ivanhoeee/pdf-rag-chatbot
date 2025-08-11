@@ -90,25 +90,6 @@ def display_chat_messages(messages, reverse=True):
             st.markdown(f"<div class='assistant-message'><b>Assistant:</b><br>{msg['content']}</div>", unsafe_allow_html=True)
 
 
-# def display_chat_messages(messages, reverse=True):
-#     """
-#     Display chat messages in the UI.
-    
-#     Parameters:
-#     -----------
-#     messages : list
-#         List of message dictionaries with 'role' and 'content' keys
-#     reverse : bool, default=True
-#         If True, display newest messages first
-#     """
-#     # Clear previous messages
-#     st.empty()
-    
-#     # Display messages
-#     message_list = reversed(messages) if reverse else messages
-#     for msg in message_list:
-#         st.chat_message(msg["role"]).markdown(msg["content"])
-
 def display_rag_process(user_input, chunks, index, retrieved, context, prompt):
     """Display the RAG process details in an expandable section."""
     with st.expander("🔍 Click here for RAG Process Details", expanded=False):
@@ -123,6 +104,7 @@ def display_rag_process(user_input, chunks, index, retrieved, context, prompt):
         
         st.write("**Step 4: Creating prompt for the language model**")
         st.write(f"Prompt: `{prompt}`")
+
 
 def display_footer():
     """Display a more professional footer."""
@@ -390,3 +372,44 @@ def visualize_embeddings_with_question(chunks, embeddings, question=None, label_
     ax.legend()
     plt.tight_layout()
     return fig
+
+
+def display_model_selector():
+    """Display model selection in sidebar and return the selected model name."""
+    st.sidebar.header("Model Settings")
+    
+    model_options = {
+        "flan-t5-small": {
+            "name": "Flan-T5 Small",
+            "description": "Small but fast T5 model (~300M parameters)",
+            "memory": "~500MB"
+        },
+        "qwen-1.5b": {
+            "name": "Qwen 2.5 1.5B Instruct",
+            "description": "High quality Chinese-origin model with good instruction following",
+            "memory": "~1.1GB" 
+        },
+        "llama-3.2-1b": {
+            "name": "Llama 3.2 1B Instruct",
+            "description": "Meta's latest compact model with strong capabilities",
+            "memory": "~1GB"
+        }
+    }
+    
+    # Model selection
+    selected_model = st.sidebar.selectbox(
+        "Choose Language Model:",
+        options=list(model_options.keys()),
+        format_func=lambda x: model_options[x]["name"],
+        index=0
+    )
+    
+    # Display model info
+    st.sidebar.markdown(f"**Description:** {model_options[selected_model]['description']}")
+    st.sidebar.markdown(f"**Memory Usage:** {model_options[selected_model]['memory']}")
+    
+    # Memory warning
+    if selected_model != "flan-t5-small":
+        st.sidebar.warning("⚠️ First generation with this model may take 15-20 seconds to load.")
+    
+    return selected_model

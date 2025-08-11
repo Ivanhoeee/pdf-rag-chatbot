@@ -1,7 +1,7 @@
 import streamlit as st
 from rag_utils import extract_text_from_pdf, chunk_text, embed_chunks, create_faiss_index, retrieve_similar_chunks
 from model_utils import generate_response
-from ui_components import display_header, display_chat_messages, display_rag_process, display_footer, display_embedding_visualization, display_embedding_visualization_with_question
+from ui_components import display_header, display_chat_messages, display_rag_process, display_footer, display_embedding_visualization_with_question, display_model_selector
 
 # Setup UI
 display_header()
@@ -18,6 +18,24 @@ if "refresh_viz" not in st.session_state:
     st.session_state.refresh_viz = False
 if "last_question" not in st.session_state:
     st.session_state.last_question = None
+if "selected_model" not in st.session_state:
+    st.session_state.selected_model = "flan-t5-small"
+
+# Display model selector in sidebar
+selected_model = display_model_selector()
+if selected_model != st.session_state.selected_model:
+    # Clear model from cache when switching
+    st.session_state.selected_model = selected_model
+    st.rerun()  # Rerun to apply model change
+
+# Update the educational notice in the header if needed
+if st.session_state.selected_model != "flan-t5-small":
+    st.markdown(f"""
+    <div style="background-color:#222f3b; padding: 10px; border-radius: 4px;">
+    ⚠️ <b>Educational Tool Notice:</b> This app uses {selected_model} to demonstrate RAG concepts.
+    The focus is on learning about RAG architecture and semantic retrieval.
+    </div>
+    """, unsafe_allow_html=True)
 
 # Create tabs for different app functions
 tab1, tab2 = st.tabs(["Chat with PDF", "Visualize Embeddings"])
@@ -66,10 +84,10 @@ with tab1:
             # Show RAG process
             display_rag_process(user_input, st.session_state.chunks, st.session_state.index, retrieved, context, prompt)
             
-            # Generate response
+            # Generate response using the selected model
             response_placeholder = st.empty()
             response_placeholder.markdown("Generating response...")
-            response = generate_response(prompt)
+            response = generate_response(prompt, model_name=st.session_state.selected_model)
             response_placeholder.empty()
         
         # Add assistant message
@@ -79,6 +97,8 @@ with tab1:
         display_chat_messages(st.session_state.messages)
 
 with tab2:
+    st.header("Embedding Visualization")
+    
     if st.session_state.chunks is None or st.session_state.embeddings is None:
         st.info("Please upload and process a PDF first to visualize its embeddings.")
     else:
@@ -88,6 +108,29 @@ with tab2:
             st.session_state.embeddings,
             st.session_state.last_question
         )
-
+        
+        # Add search functionality
+        st.subheader("Search Visualization")
+        search_query = st.text_input("Highlight chunks containing:", key="viz_search")
+        
+        if search_query:
+            st.write(f"Highlighting chunks containing: '{search_query}'")
+            
+            # Filter chunks that contain the search query
+            matching_indices = [i for i, chunk in enumerate(st.session_state.chunks) 
+                              if search_query.lower() in chunk.lower()]
+            
+            if matching_indices:
+                from rag_utils import visualize_embeddings_with_highlights
+                fig = visualize_embeddings_with_highlights(
+                    st.session_state.chunks, 
+                    st.session_state.embeddings,
+                    matching_indices,
+                    highlight_label="Matches"
+                )
+                st.pyplot(fig)
+                st.write(f"Found {len(matching_indices)} chunks containing '{search_query}'")
+            else:
+                st.write(f"No chunks found containing '{search_query}'")
 # Display footer
 display_footer()
