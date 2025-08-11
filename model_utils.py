@@ -2,7 +2,6 @@ import streamlit as st
 from transformers import pipeline, AutoModelForCausalLM, AutoTokenizer
 import torch
 
-
 @st.cache_resource
 def load_model(model_name="flan-t5-small"):
     """
@@ -15,47 +14,28 @@ def load_model(model_name="flan-t5-small"):
             tokenizer="google/flan-t5-small",
         )
     
-    elif model_name == "phi-1.5":  # Replacing Qwen
+    elif model_name == "distilgpt2":
         try:
             return pipeline(
                 "text-generation",
-                model="microsoft/phi-1_5",
-                tokenizer="microsoft/phi-1_5",
-                trust_remote_code=True
+                model="distilgpt2"  # No need for tokenizer parameter, it's automatically loaded
             )
         except Exception as e:
-            st.error(f"Error loading Phi-1.5 model: {e}")
+            st.error(f"Error loading DistilGPT-2 model: {e}")
             return pipeline("text2text-generation", model="google/flan-t5-small")
 
-    elif model_name == "tinyllama":  # Replacing Llama
+    elif model_name == "distilbert-qa":
         try:
             return pipeline(
-                "text-generation",
-                model="TinyLlama/TinyLlama-1.1B-Chat-v1.0", 
-                tokenizer="TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+                "question-answering",
+                model="distilbert-base-cased-distilled-squad"
             )
         except Exception as e:
-            st.error(f"Error loading TinyLlama model: {e}")
+            st.error(f"Error loading DistilBERT model: {e}")
             return pipeline("text2text-generation", model="google/flan-t5-small")
 
 def generate_response(prompt, model_name="flan-t5-small", max_length=256):
-    """
-    Generate a response using the selected language model.
-    
-    Parameters:
-    -----------
-    prompt : str
-        The prompt to send to the model
-    model_name : str
-        The model to use for generation
-    max_length : int, default=256
-        Maximum length of the generated response
-        
-    Returns:
-    --------
-    str
-        The generated response text
-    """
+    """Generate a response using the selected language model."""
     loaded = load_model(model_name)
     
     try:
@@ -63,9 +43,9 @@ def generate_response(prompt, model_name="flan-t5-small", max_length=256):
             # T5 models use max_length and directly return the answer
             response = loaded(prompt, max_length=max_length)[0]["generated_text"].strip()
         
-        elif model_name == "phi-1.5":
-            # Format prompt for Phi models
-            formatted_prompt = f"Based on this context: {prompt}\n\nResponse:"
+        elif model_name == "distilgpt2":
+            # Format prompt for GPT models
+            formatted_prompt = f"Question: {prompt}\n\nAnswer:"
             
             outputs = loaded(
                 formatted_prompt,
@@ -78,29 +58,31 @@ def generate_response(prompt, model_name="flan-t5-small", max_length=256):
             full_response = outputs[0]["generated_text"]
             
             # Remove the prompt to get just the answer
-            if "Response:" in full_response:
-                response = full_response.split("Response:")[1].strip()
+            if "Answer:" in full_response:
+                response = full_response.split("Answer:")[1].strip()
             else:
                 response = full_response.replace(formatted_prompt, "").strip()
+        
+        elif model_name == "distilbert-qa":
+            # Extract the question from the prompt
+            question = ""
+            if "Question:" in prompt:
+                question = prompt.split("Question:")[-1].strip()
+            else:
+                # Get the last sentence as the question
+                prompt_parts = prompt.split("\n")
+                for part in reversed(prompt_parts):
+                    if part.strip():
+                        question = part.strip()
+                        break
             
-        elif model_name == "tinyllama":
-            # Format prompt for TinyLlama
-            formatted_prompt = f"<|user|>\n{prompt}\n<|assistant|>"
-            
-            outputs = loaded(
-                formatted_prompt,
-                max_new_tokens=max_length,
-                do_sample=True,
-                temperature=0.7
+            # For QA models, we need to separate the context and question
+            qa_result = loaded(
+                question=question,
+                context=prompt
             )
             
-            # Extract just the assistant's reply
-            full_response = outputs[0]["generated_text"]
-            
-            if "<|assistant|>" in full_response:
-                response = full_response.split("<|assistant|>")[1].strip()
-            else:
-                response = full_response.replace(formatted_prompt, "").strip()
+            response = qa_result["answer"]
             
         else:
             response = "Model not recognized"

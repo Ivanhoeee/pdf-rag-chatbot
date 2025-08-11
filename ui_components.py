@@ -373,26 +373,25 @@ def visualize_embeddings_with_question(chunks, embeddings, question=None, label_
     plt.tight_layout()
     return fig
 
-
 def display_model_selector():
     """Display model selection in sidebar and return the selected model name."""
     st.sidebar.header("Model Settings")
     
     model_options = {
         "flan-t5-small": {
-            "name": "Flan-T5 Small",
-            "description": "Small but fast T5 model (~300M parameters)",
-            "memory": "~500MB"
+            "name": "Flan-T5 Small (80M)",
+            "description": "T5 model with good instruction following",
+            "memory": "~300MB"
         },
-        "phi-1.5": {  
-            "name": "Microsoft Phi-1.5",
-            "description": "Compact but powerful instruction-following model (1.3B parameters)",
-            "memory": "~800MB" 
+        "distilgpt2": {
+            "name": "DistilGPT-2 (82M)",
+            "description": "Lightweight GPT-2, good for text generation",
+            "memory": "~350MB" 
         },
-        "tinyllama": {  
-            "name": "TinyLlama 1.1B Chat",
-            "description": "Lightweight Llama variant optimized for resource constraints",
-            "memory": "~700MB"
+        "distilbert-qa": {
+            "name": "DistilBERT QA (66M)",
+            "description": "Specialized question answering model",
+            "memory": "~250MB"
         }
     }
     
@@ -407,9 +406,5 @@ def display_model_selector():
     # Display model info
     st.sidebar.markdown(f"**Description:** {model_options[selected_model]['description']}")
     st.sidebar.markdown(f"**Memory Usage:** {model_options[selected_model]['memory']}")
-    
-    # Memory warning
-    if selected_model != "flan-t5-small":
-        st.sidebar.warning("⚠️ First generation with this model may take 15-20 seconds to load.")
     
     return selected_model
