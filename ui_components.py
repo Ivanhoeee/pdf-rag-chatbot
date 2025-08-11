@@ -384,15 +384,15 @@ def display_model_selector():
             "description": "Small but fast T5 model (~300M parameters)",
             "memory": "~500MB"
         },
-        "qwen-1.5b": {
-            "name": "Qwen 2.5 1.5B Instruct",
-            "description": "High quality Chinese-origin model with good instruction following",
-            "memory": "~1.1GB" 
+        "phi-1.5": {  
+            "name": "Microsoft Phi-1.5",
+            "description": "Compact but powerful instruction-following model (1.3B parameters)",
+            "memory": "~800MB" 
         },
-        "llama-3.2-1b": {
-            "name": "Llama 3.2 1B Instruct",
-            "description": "Meta's latest compact model with strong capabilities",
-            "memory": "~1GB"
+        "tinyllama": {  
+            "name": "TinyLlama 1.1B Chat",
+            "description": "Lightweight Llama variant optimized for resource constraints",
+            "memory": "~700MB"
         }
     }
     
