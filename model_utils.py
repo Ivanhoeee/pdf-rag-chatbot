@@ -47,21 +47,38 @@ def generate_response(prompt, model_name="flan-t5-small", max_length=256):
             # Format prompt for GPT models
             formatted_prompt = f"Question: {prompt}\n\nAnswer:"
             
+            # Generate with safer parameters
             outputs = loaded(
                 formatted_prompt,
                 max_new_tokens=max_length,
                 do_sample=True,
-                temperature=0.7
+                temperature=0.7,
+                num_return_sequences=1,  # Ensure we get exactly one sequence
+                return_full_text=True    # Include the prompt in output
             )
             
-            # Extract just the generated text
-            full_response = outputs[0]["generated_text"]
-            
-            # Remove the prompt to get just the answer
-            if "Answer:" in full_response:
-                response = full_response.split("Answer:")[1].strip()
-            else:
-                response = full_response.replace(formatted_prompt, "").strip()
+            # Safer extraction from the generated text
+            try:
+                full_response = outputs[0]["generated_text"]
+                
+                # Check if Answer: is in the response
+                if "Answer:" in full_response:
+                    parts = full_response.split("Answer:", 1)  # Split only on first occurrence
+                    if len(parts) > 1:
+                        response = parts[1].strip()
+                    else:
+                        response = full_response
+                else:
+                    # If no Answer: marker, take everything after the prompt
+                    if formatted_prompt in full_response:
+                        response = full_response[len(formatted_prompt):].strip()
+                    else:
+                        response = full_response
+                        
+            except (IndexError, KeyError, AttributeError) as e:
+                # If any extraction fails, use a fallback
+                st.warning(f"Extraction issue: {str(e)}")
+                response = "The model generated a response but I couldn't extract it properly."
         
         elif model_name == "distilbert-qa":
             # Extract the question from the prompt
@@ -77,12 +94,16 @@ def generate_response(prompt, model_name="flan-t5-small", max_length=256):
                         break
             
             # For QA models, we need to separate the context and question
-            qa_result = loaded(
-                question=question,
-                context=prompt
-            )
-            
-            response = qa_result["answer"]
+            try:
+                qa_result = loaded(
+                    question=question,
+                    context=prompt
+                )
+                
+                response = qa_result["answer"]
+            except Exception as e:
+                st.warning(f"QA model error: {str(e)}")
+                response = "The QA model couldn't process this question with the given context."
             
         else:
             response = "Model not recognized"
