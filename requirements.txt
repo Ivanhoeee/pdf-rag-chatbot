@@ -4,6 +4,7 @@ sentence-transformers
 transformers
 torch
 pymupdf
-ctransformers>=0.2.24
-langchain-community>=0.0.13
-accelarate
+scikit-learn
+matplotlib
+numpy
+accelerate
