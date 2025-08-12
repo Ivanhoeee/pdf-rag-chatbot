@@ -9,27 +9,12 @@ def display_header():
         initial_sidebar_state="collapsed"
     )
     
-    # Custom CSS for better spacing and colors
+    # Minimal CSS - let Streamlit theme handle colors
     st.markdown("""
     <style>
         .block-container {
             padding-top: 2rem;
             padding-bottom: 2rem;
-        }
-        .stButton>button {
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 0.5rem 1rem;
-        }
-        .stTextInput>div>div>input {
-            border-radius: 4px;
-        }
-        h1 {
-            color: #FF4B4B;
-        }
-        .stAlert {
-            border-radius: 4px;
         }
     </style>
     """, unsafe_allow_html=True)
@@ -40,17 +25,12 @@ def display_header():
         st.title("📚 RAG Explorer")
         st.markdown("### Understand your documents through retrieval-augmented generation")
     
-    # More subtle info message
-    st.markdown("""
-    <div style="background-color:#222f3b; padding: 10px; border-radius: 4px;">
-    ⚠️ <b>Educational Tool Notice:</b> This app uses a small language model (flan-t5-small) to demonstrate RAG concepts.
-    The focus is on learning about RAG architecture and semantic retrieval.
-    </div>
-    """, unsafe_allow_html=True)
+    # Use Streamlit's native info component
+    st.info("⚠️ **Educational Tool Notice:** This app uses a small language model (flan-t5-small) to demonstrate RAG concepts. The focus is on learning about RAG architecture and semantic retrieval.")
 
 def display_chat_messages(messages, reverse=True):
     """
-    Display chat messages in the UI with improved styling.
+    Display chat messages in the UI using Streamlit's native components.
     
     Parameters:
     -----------
@@ -59,55 +39,12 @@ def display_chat_messages(messages, reverse=True):
     reverse : bool, default=True
         If True, display newest messages first
     """
-    # Custom CSS for messages
-    st.markdown("""
-    <style>
-        .user-message {
-            background-color: #262730;
-            padding: 15px;
-            border-radius: 10px;
-            margin: 10px 0;
-        }
-        .assistant-message {
-            background-color: #303239;
-            padding: 15px;
-            border-radius: 10px;
-            margin: 10px 0;
-            border-left: 4px solid #FF4B4B;
-        }
-    </style>
-    """, unsafe_allow_html=True)
-    
-    # Clear previous messages
-    st.empty()
-    
-    # Display messages with improved styling
+    # Use Streamlit's native chat message components
     message_list = reversed(messages) if reverse else messages
     for msg in message_list:
-        if msg["role"] == "user":
-            st.markdown(f"<div class='user-message'><b>You:</b><br>{msg['content']}</div>", unsafe_allow_html=True)
-        else:
-            st.markdown(f"<div class='assistant-message'><b>Assistant:</b><br>{msg['content']}</div>", unsafe_allow_html=True)
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
 
-
-# def display_chat_messages(messages, reverse=True):
-#     """
-#     Display chat messages in the UI.
-    
-#     Parameters:
-#     -----------
-#     messages : list
-#         List of message dictionaries with 'role' and 'content' keys
-#     reverse : bool, default=True
-#         If True, display newest messages first
-#     """
-#     # Clear previous messages
-#     st.empty()
-    
-#     # Display messages
-#     message_list = reversed(messages) if reverse else messages
-#     for msg in message_list:
-#         st.chat_message(msg["role"]).markdown(msg["content"])
 
 def display_rag_process(user_input, chunks, index, retrieved, context, prompt):
     """Display the RAG process details in an expandable section."""
@@ -125,20 +62,15 @@ def display_rag_process(user_input, chunks, index, retrieved, context, prompt):
         st.write(f"Prompt: `{prompt}`")
 
 def display_footer():
-    """Display a more professional footer."""
+    """Display a simple footer using Streamlit's native styling."""
     st.markdown("---")
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
-        st.markdown("""
-        <div style="text-align: center;">
-            <p>
-                <span style="color: #FF4B4B; font-weight: bold;">RAG Explorer</span> |
-                Built by <a href="https://github.com/Ivanhoeee" style="color: #FF4B4B;">Ivan Novakovic</a> |
-                <a href="https://github.com/Ivanhoeee/pdf-rag-chatbot" style="color: #FF4B4B;">GitHub Repo</a>
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(
+            "**RAG Explorer** | Built by [Ivan Novakovic](https://github.com/Ivanhoeee) | [GitHub Repo](https://github.com/Ivanhoeee/pdf-rag-chatbot)",
+            unsafe_allow_html=True
+        )
 
 
 def display_embedding_visualization(chunks, embeddings):
@@ -228,7 +160,6 @@ def display_embedding_visualization_with_question(chunks, embeddings, question=N
     question : str, default=None
         The user's question to visualize alongside chunks
     """
-    from sentence_transformers import SentenceTransformer
     
     st.header("Document and Question Embedding Visualization")
 
@@ -240,6 +171,8 @@ def display_embedding_visualization_with_question(chunks, embeddings, question=N
     3. **PCA** reduces these high-dimensional vectors to 2D points you can see
     4. **Proximity** between points indicates semantic similarity
     5. **Closest chunks** to your question (highlighted) are the ones used to generate answers
+    
+    📍 **Note:** Chunk positions remain consistent when toggling question visibility to maintain spatial relationships.
     """)
 
     st.write("""
@@ -263,6 +196,12 @@ def display_embedding_visualization_with_question(chunks, embeddings, question=N
     with col1:
         # Only include question if checkbox is selected and question exists
         active_question = question if show_question and question else None
+        
+        # Debug information
+        # if active_question:
+        #     st.write(f"📍 **Visualizing question:** {active_question[:50]}{'...' if len(active_question) > 50 else ''}")
+        # else:
+        #     st.write("📊 **Visualizing document chunks only** (no question)")
         
         # Create and display the visualization with user-selected parameters
         fig = visualize_embeddings_with_question(
@@ -297,14 +236,14 @@ def visualize_embeddings_with_question(chunks, embeddings, question=None, label_
     import matplotlib.pyplot as plt
     from sklearn.decomposition import PCA
     import numpy as np
-    from sentence_transformers import SentenceTransformer
+    from rag_utils import embedder  # Use the same embedder instance
     
-    # If we have a question, get its embedding and include it
-    if question:
-        embedder = SentenceTransformer("all-MiniLM-L6-v2")
-        question_embedding = embedder.encode([question])
+    # Always get the question embedding to ensure consistent PCA space
+    # This prevents chunk positions from changing when toggling question visibility
+    if hasattr(st.session_state, 'last_question') and st.session_state.last_question:
+        question_embedding = embedder.encode([st.session_state.last_question])
         
-        # Combine document and question embeddings
+        # Always combine document and question embeddings for PCA
         combined_embeddings = np.vstack([embeddings, question_embedding])
         
         # Reduce dimensions for all embeddings together
@@ -314,10 +253,15 @@ def visualize_embeddings_with_question(chunks, embeddings, question=None, label_
         # Split back into document and question parts
         reduced_doc_embeddings = reduced_embeddings[:-1]
         reduced_question_embedding = reduced_embeddings[-1].reshape(1, -1)
+        
+        # Calculate all points for consistent axis limits
+        all_points = reduced_embeddings
     else:
-        # Just use document embeddings if no question
+        # No question available, just use document embeddings
         pca = PCA(n_components=2)
         reduced_doc_embeddings = pca.fit_transform(embeddings)
+        reduced_question_embedding = None
+        all_points = reduced_doc_embeddings
     
     # Plot in 2D
     fig, ax = plt.subplots(figsize=(6, 4))
@@ -340,8 +284,8 @@ def visualize_embeddings_with_question(chunks, embeddings, question=None, label_
             alpha=0.8
         )
     
-    # Add question point and label if provided
-    if question:
+    # Only display question point if question parameter is provided (user wants to see it)
+    if question and reduced_question_embedding is not None:
         ax.scatter(
             reduced_question_embedding[:, 0],
             reduced_question_embedding[:, 1],
@@ -353,7 +297,7 @@ def visualize_embeddings_with_question(chunks, embeddings, question=None, label_
         
         # Add question label
         ax.annotate(
-            f"Q: {question[:30]}{'...' if len(question) > 50 else ''}", 
+            f"Q: {question[:30]}{'...' if len(question) > 30 else ''}", 
             (reduced_question_embedding[0, 0], reduced_question_embedding[0, 1]),
             color='darkred',
             weight='bold'
@@ -362,23 +306,26 @@ def visualize_embeddings_with_question(chunks, embeddings, question=None, label_
         # Show the nearest chunks
         # Calculate distances in the 2D space
         distances = np.linalg.norm(reduced_doc_embeddings - reduced_question_embedding, axis=1)
-        closest_indices = np.argsort(distances)[:1]  # Get 3 closest chunks
+        closest_indices = np.argsort(distances)[:1]  # Get the closest chunk
         
         # Highlight the closest chunks
         for idx in closest_indices:
             ax.scatter(
                 reduced_doc_embeddings[idx, 0],
                 reduced_doc_embeddings[idx, 1],
-                s=point_size*2.5,
-                color='blue',
+                s=point_size*1.5,
+                color='orange',
                 marker='o',
-                alpha=0.8
+                alpha=0.8,
+                edgecolor='darkred',
+                linewidth=2
             )
-    # Set min and max limits for better visibility
-    min_x = reduced_doc_embeddings[:, 0].min() 
-    max_x = reduced_doc_embeddings[:, 0].max()
-    min_y = reduced_doc_embeddings[:, 1].min()
-    max_y = reduced_doc_embeddings[:, 1].max()
+    
+    # Set consistent limits based on all points (including question even if not displayed)
+    min_x = all_points[:, 0].min() 
+    max_x = all_points[:, 0].max()
+    min_y = all_points[:, 1].min()
+    max_y = all_points[:, 1].max()
     x_range = max_x - min_x
     y_range = max_y - min_y
 
@@ -390,3 +337,63 @@ def visualize_embeddings_with_question(chunks, embeddings, question=None, label_
     ax.legend()
     plt.tight_layout()
     return fig
+
+
+def display_model_selector():
+    """Display model selection in sidebar and return the selected model name."""
+    st.sidebar.header("Model Settings")
+    
+    model_options = {
+        "flan-t5-small": {
+            "name": "Flan-T5 Small (80M)",
+            "description": "Small T5 model with good instruction following",
+            "memory": "~300MB",
+            "api_required": False
+        },
+        "openai-gpt35": {
+            "name": "GPT-3.5 Turbo (OpenAI)",
+            "description": "Powerful general-purpose model (requires API key)",
+            "memory": "N/A (API)",
+            "api_required": True
+        },
+        "openai-gpt4o": {
+            "name": "GPT-4o (OpenAI)",
+            "description": "High-performance multimodal model (requires API key)",
+            "memory": "N/A (API)",
+            "api_required": True
+        }
+    }
+    
+    # Initialize API key in session state if not present
+    if "openai_api_key" not in st.session_state:
+        st.session_state.openai_api_key = ""
+    
+    # OpenAI API Key input
+    st.sidebar.subheader("API Settings")
+    api_key = st.sidebar.text_input("OpenAI API Key", 
+                                 value=st.session_state.openai_api_key,
+                                 type="password",
+                                 help="Required for GPT-3.5/4 models",
+                                 placeholder="sk-...")
+    
+    # Update session state when API key changes
+    if api_key != st.session_state.openai_api_key:
+        st.session_state.openai_api_key = api_key
+    
+    # Model selection
+    selected_model = st.sidebar.selectbox(
+        "Choose Language Model:",
+        options=list(model_options.keys()),
+        format_func=lambda x: model_options[x]["name"],
+        index=0
+    )
+    
+    # Display model info
+    st.sidebar.markdown(f"**Description:** {model_options[selected_model]['description']}")
+    st.sidebar.markdown(f"**Memory Usage:** {model_options[selected_model]['memory']}")
+    
+    # Warning if API key needed but not provided
+    if model_options[selected_model]["api_required"] and not st.session_state.openai_api_key:
+        st.sidebar.warning("⚠️ Please enter your OpenAI API key to use this model")
+    
+    return selected_model
