@@ -25,9 +25,7 @@ def display_header():
         st.title("📚 RAG Explorer")
         st.markdown("### Understand your documents through retrieval-augmented generation")
     
-    # Use Streamlit's native info component
-    st.info("⚠️ **Educational Tool Notice:** This app uses a small language model (flan-t5-small) to demonstrate RAG concepts. The focus is on learning about RAG architecture and semantic retrieval.")
-
+    
 def display_chat_messages(messages, reverse=True):
     """
     Display chat messages in the UI using Streamlit's native components.
