@@ -55,7 +55,7 @@ def load_model(model_name="flan-t5-small"):
             st.error(f"Error initializing OpenAI client: {e}")
             return None
 
-def generate_response(prompt, model_name="flan-t5-small", max_length=256):
+def generate_response(prompt, model_name="flan-t5-small", max_length=256, temperature=0.7):
     """
     Generate a response using the selected language model.
     
@@ -67,6 +67,8 @@ def generate_response(prompt, model_name="flan-t5-small", max_length=256):
         The model to use
     max_length : int, default=256
         Maximum length of the generated response
+    temperature : float, default=0.7
+        Controls randomness: 0.0 = deterministic, 2.0 = very creative
         
     Returns:
     --------
@@ -80,7 +82,49 @@ def generate_response(prompt, model_name="flan-t5-small", max_length=256):
     
     try:
         if model_name == "flan-t5-small":
-            response = model(prompt, max_length=max_length)[0]["generated_text"].strip()
+            # Flan-T5 is sensitive to temperature - use a more conservative approach
+            # Clamp temperature to a safer range for this model
+            safe_temperature = min(max(temperature, 0.1), 1.0)  # Clamp between 0.1 and 1.0
+            
+            try:
+                # Use simpler parameters that work better with Flan-T5
+                if safe_temperature <= 0.1:
+                    # For very low temperatures, use deterministic generation
+                    result = model(
+                        prompt, 
+                        max_length=max_length,
+                        do_sample=False,
+                        pad_token_id=model.tokenizer.eos_token_id
+                    )
+                else:
+                    # For higher temperatures, use sampling but with conservative settings
+                    result = model(
+                        prompt, 
+                        max_length=max_length,
+                        do_sample=True,
+                        temperature=safe_temperature,
+                        top_k=50,  # Limit vocabulary for more stable generation
+                        top_p=0.95,  # Slightly higher top_p for better results
+                        pad_token_id=model.tokenizer.eos_token_id,
+                        repetition_penalty=1.1  # Reduce repetition
+                    )
+                
+                if result and len(result) > 0 and "generated_text" in result[0]:
+                    response = result[0]["generated_text"].strip()
+                    
+                    # If original temperature was outside safe range, add a note
+                    if temperature != safe_temperature:
+                        response += f"\n\n*Note: Temperature adjusted from {temperature} to {safe_temperature} for Flan-T5 stability*"
+                else:
+                    response = ""
+                    
+            except Exception as e:
+                # Simple fallback without any special parameters
+                try:
+                    result = model(prompt, max_length=max_length)
+                    response = result[0]["generated_text"].strip() if result and len(result) > 0 else ""
+                except Exception as fallback_e:
+                    response = f"Flan-T5 error: {str(fallback_e)}"
         
         elif model_name == "openai-gpt35":
             # Track token usage for cost display
@@ -93,7 +137,7 @@ def generate_response(prompt, model_name="flan-t5-small", max_length=256):
                     {"role": "user", "content": prompt}
                 ],
                 max_tokens=max_length,
-                temperature=0.7
+                temperature=temperature  # Use the temperature parameter
             )
             
             response = completion.choices[0].message.content
@@ -116,7 +160,7 @@ def generate_response(prompt, model_name="flan-t5-small", max_length=256):
                     {"role": "user", "content": prompt}
                 ],
                 max_tokens=max_length,
-                temperature=0.7
+                temperature=temperature  # Use the temperature parameter
             )
             
             response = completion.choices[0].message.content
@@ -131,7 +175,11 @@ def generate_response(prompt, model_name="flan-t5-small", max_length=256):
     except Exception as e:
         response = f"Error generating response: {str(e)}"
     
-    if not response:
-        return "I couldn't generate a response based on the provided information."
+    # Improved response validation
+    if not response or response.strip() == "":
+        if model_name == "flan-t5-small":
+            return f"Flan-T5 model did not generate a response. This small model can be sensitive to certain prompts or contexts. Try rephrasing your question or using a different temperature setting (recommended: 0.3-0.8)."
+        else:
+            return "I couldn't generate a response based on the provided information."
     
     return response

@@ -6,7 +6,7 @@ def display_header():
         page_title="📚 RAG Explorer",
         page_icon="📚",
         layout="wide",
-        initial_sidebar_state="collapsed"
+        initial_sidebar_state="expanded"
     )
     
     # Minimal CSS - let Streamlit theme handle colors
@@ -344,7 +344,7 @@ def display_model_selector():
     model_options = {
         "flan-t5-small": {
             "name": "Flan-T5 Small (80M)",
-            "description": "Small T5 model with good instruction following",
+            "description": "Small T5 model, not great but totally free to use",
             "memory": "~300MB",
             "api_required": False
         },
@@ -389,6 +389,42 @@ def display_model_selector():
     # Display model info
     st.sidebar.markdown(f"**Description:** {model_options[selected_model]['description']}")
     st.sidebar.markdown(f"**Memory Usage:** {model_options[selected_model]['memory']}")
+    
+    # Temperature setting
+    st.sidebar.subheader("Generation Settings")
+    
+    # Initialize temperature in session state if not present
+    if "temperature" not in st.session_state:
+        st.session_state.temperature = 0.7
+    
+    temperature = st.sidebar.slider(
+        "Temperature",
+        min_value=0.0,
+        max_value=2.0,
+        value=st.session_state.temperature,
+        step=0.1,
+        help="Controls randomness: 0.0 = deterministic, 2.0 = very creative"
+    )
+    
+    # Update session state when temperature changes
+    if temperature != st.session_state.temperature:
+        st.session_state.temperature = temperature
+    
+    # Temperature explanation
+    if temperature <= 0.3:
+        temp_desc = "🎯 **Focused** - Very deterministic, consistent responses"
+    elif temperature <= 0.7:
+        temp_desc = "⚖️ **Balanced** - Good mix of consistency and creativity"
+    elif temperature <= 1.2:
+        temp_desc = "🎨 **Creative** - More varied and creative responses"
+    else:
+        temp_desc = "🎲 **Experimental** - Highly random, unpredictable responses"
+    
+    st.sidebar.markdown(temp_desc)
+    
+    # Model-specific temperature guidance
+    if selected_model == "flan-t5-small" and temperature > 1.0:
+        st.sidebar.warning("⚠️ Flan-T5 works best with temperature ≤ 1.0. Higher values may cause instability.")
     
     # Warning if API key needed but not provided
     if model_options[selected_model]["api_required"] and not st.session_state.openai_api_key:

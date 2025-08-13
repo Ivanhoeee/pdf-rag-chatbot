@@ -75,9 +75,11 @@ try:
             st.success("PDF processed and indexed!")
 
         # Chat interface
-        user_input = st.text_input("Ask a question:")
+        with st.form("question_form"):
+            user_input = st.text_input("Ask a question:")
+            submitted = st.form_submit_button("Submit")
 
-        if user_input and st.session_state.chunks:
+        if submitted and user_input and st.session_state.chunks:
             # Save the question for visualization
             st.session_state.last_question = user_input
             
@@ -102,7 +104,11 @@ try:
                 # Generate response using the selected model
                 response_placeholder = st.empty()
                 response_placeholder.markdown("Generating response...")
-                response = generate_response(prompt, model_name=st.session_state.selected_model)
+                response = generate_response(
+                    prompt, 
+                    model_name=st.session_state.selected_model,
+                    temperature=st.session_state.get('temperature', 0.7)
+                )
                 response_placeholder.empty()
             
             # Add assistant message
