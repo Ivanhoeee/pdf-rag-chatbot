@@ -82,29 +82,6 @@ def generate_response(prompt, model_name="flan-t5-small", max_length=256):
         if model_name == "flan-t5-small":
             response = model(prompt, max_length=max_length)[0]["generated_text"].strip()
         
-        elif model_name == "distilgpt2":
-            # Format prompt for GPT models
-            formatted_prompt = f"Question: {prompt}\n\nAnswer:"
-            
-            # Generate with safer parameters
-            outputs = model(
-                formatted_prompt,
-                max_new_tokens=max_length,
-                do_sample=True,
-                temperature=0.7,
-                num_return_sequences=1,
-                return_full_text=True
-            )
-            
-            # Extract just the generated text
-            full_response = outputs[0]["generated_text"]
-            
-            # Remove the prompt to get just the answer
-            if "Answer:" in full_response:
-                response = full_response.split("Answer:", 1)[1].strip()
-            else:
-                response = full_response.replace(formatted_prompt, "").strip()
-        
         elif model_name == "openai-gpt35":
             # Track token usage for cost display
             start_time = time.time()
