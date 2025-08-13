@@ -366,19 +366,7 @@ def display_model_selector():
     if "openai_api_key" not in st.session_state:
         st.session_state.openai_api_key = ""
     
-    # OpenAI API Key input
-    st.sidebar.subheader("API Settings")
-    api_key = st.sidebar.text_input("OpenAI API Key", 
-                                 value=st.session_state.openai_api_key,
-                                 type="password",
-                                 help="Required for GPT-3.5/4 models",
-                                 placeholder="sk-...")
-    
-    # Update session state when API key changes
-    if api_key != st.session_state.openai_api_key:
-        st.session_state.openai_api_key = api_key
-    
-    # Model selection
+    # Model selection first
     selected_model = st.sidebar.selectbox(
         "Choose Language Model:",
         options=list(model_options.keys()),
@@ -386,48 +374,76 @@ def display_model_selector():
         index=0
     )
     
-    # Display model info
-    st.sidebar.markdown(f"**Description:** {model_options[selected_model]['description']}")
-    st.sidebar.markdown(f"**Memory Usage:** {model_options[selected_model]['memory']}")
+    # Show API key input only for GPT models
+    if model_options[selected_model]["api_required"]:
+        st.sidebar.subheader("API Settings")
+        api_key = st.sidebar.text_input("OpenAI API Key", 
+                                     value=st.session_state.openai_api_key,
+                                     type="password",
+                                     help="Required for GPT-3.5/4 models",
+                                     placeholder="sk-...")
+        
+        # Update session state when API key changes
+        if api_key != st.session_state.openai_api_key:
+            st.session_state.openai_api_key = api_key
+        
+        # Warning if API key needed but not provided
+        if not st.session_state.openai_api_key:
+            st.sidebar.warning("⚠️ Please enter your OpenAI API key to use this model")
     
-    # Temperature setting
+    # Display model info with smaller text
+    st.sidebar.markdown(f"<small>**Description:** {model_options[selected_model]['description']}</small>", unsafe_allow_html=True)
+    st.sidebar.markdown(f"<small>**Memory Usage:** {model_options[selected_model]['memory']}</small>", unsafe_allow_html=True)
+    
+    # Generation Settings
     st.sidebar.subheader("Generation Settings")
+    st.sidebar.markdown("<small>Temperature controls response randomness and creativity.</small>", unsafe_allow_html=True)
     
     # Initialize temperature in session state if not present
     if "temperature" not in st.session_state:
         st.session_state.temperature = 0.7
     
-    temperature = st.sidebar.slider(
-        "Temperature",
-        min_value=0.0,
-        max_value=2.0,
-        value=st.session_state.temperature,
-        step=0.1,
-        help="Controls randomness: 0.0 = deterministic, 2.0 = very creative"
-    )
-    
-    # Update session state when temperature changes
-    if temperature != st.session_state.temperature:
-        st.session_state.temperature = temperature
-    
-    # Temperature explanation
-    if temperature <= 0.3:
-        temp_desc = "🎯 **Focused** - Very deterministic, consistent responses"
-    elif temperature <= 0.7:
-        temp_desc = "⚖️ **Balanced** - Good mix of consistency and creativity"
-    elif temperature <= 1.2:
-        temp_desc = "🎨 **Creative** - More varied and creative responses"
+    if selected_model in ["openai-gpt35", "openai-gpt4o"]:
+        # GPT models - interactive temperature slider
+        temperature = st.sidebar.slider(
+            "Temperature",
+            min_value=0.0,
+            max_value=2.0,
+            value=st.session_state.temperature,
+            step=0.1,
+            help="Controls randomness: 0.0 = deterministic, 2.0 = very creative"
+        )
+        
+        # Update session state when temperature changes
+        if temperature != st.session_state.temperature:
+            st.session_state.temperature = temperature
+        
+        # Temperature explanation
+        if temperature <= 0.3:
+            temp_desc = "🎯 **Focused** - Very deterministic, consistent responses"
+        elif temperature <= 0.7:
+            temp_desc = "⚖️ **Balanced** - Good mix of consistency and creativity"
+        elif temperature <= 1.2:
+            temp_desc = "🎨 **Creative** - More varied and creative responses"
+        else:
+            temp_desc = "🎲 **Experimental** - Highly random, unpredictable responses"
+        
+        st.sidebar.markdown(temp_desc)
     else:
-        temp_desc = "🎲 **Experimental** - Highly random, unpredictable responses"
-    
-    st.sidebar.markdown(temp_desc)
-    
-    # Model-specific temperature guidance
-    if selected_model == "flan-t5-small" and temperature > 1.0:
-        st.sidebar.warning("⚠️ Flan-T5 works best with temperature ≤ 1.0. Higher values may cause instability.")
-    
-    # Warning if API key needed but not provided
-    if model_options[selected_model]["api_required"] and not st.session_state.openai_api_key:
-        st.sidebar.warning("⚠️ Please enter your OpenAI API key to use this model")
+        # Flan-T5 - fixed temperature but still show slider
+        st.session_state.temperature = 0.3  # Fixed temperature for stability
+        
+        # Display disabled slider at fixed value
+        st.sidebar.slider(
+            "Temperature",
+            min_value=0.0,
+            max_value=2.0,
+            value=0.3,
+            step=0.1,
+            disabled=True,
+            help="Temperature is fixed for Flan-T5 stability"
+        )
+        
+        st.sidebar.info("🔒 **Temperature fixed at 0.3** for Flan-T5 stability")
     
     return selected_model
