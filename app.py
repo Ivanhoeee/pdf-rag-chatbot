@@ -50,8 +50,17 @@ try:
         API calls will be charged to your account based on token usage.
         </div>
         """, unsafe_allow_html=True)
+    st.markdown(f"""
+        <div style="background-color:#222f3b; padding: 10px; border-radius: 4px;">
+        ⚠️ <b>Model note:</b> The RAG context for generating responses only uses:
+        <ul>
+        <li>The current question</li>
+        <li>Retrieved document chunks</li>
+        <li>NOT the previous conversation history</li>
+        </ul>
+        </div>
+        """, unsafe_allow_html=True)
     
-    # Rest of your existing app.py code...
     # Create tabs for different app functions
     tab1, tab2 = st.tabs(["Chat with PDF", "Visualize Embeddings"])
     
